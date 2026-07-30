@@ -1,138 +1,173 @@
 /**
- * MercadoLibre API — Items, Categorías, Imágenes, Reviews, Links de Afiliado
- * Todo lo que no viene del Sheet, viene de acá.
+ * MercadoLibre — Scraper de páginas públicas (reemplaza la API restringida)
+ *
+ * Extrae datos desde el JSON-LD que ML embebe en cada página de producto:
+ *   - Product schema → título, precio, imágenes, marca, condición, stock, rating
+ *   - BreadcrumbList schema → categoría
  */
 
-import { MLItem, MLCategoria, MLReviewsResponse, ProductoCompleto, ProductoSheet } from './types';
+import { MLCategoria, MLRatingLevel, MLReview, ProductoCompleto, ProductoSheet } from './types';
 
-const ML_API = 'https://api.mercadolibre.com';
+// ─── Tipos internos del scraper ───────────────────────────────────────────────
 
-// ─── Fetch genérico con cache ─────────────────────────────────────────────────
+interface ScrapedData {
+  nombre:    string;
+  precio?:   number;
+  moneda:    string;
+  imagenes:  string[];
+  stock:     boolean;
+  condicion: string;
+  marca?:    string;
+  categoria: MLCategoria;
+  reviews?:  {
+    promedio: number;
+    total:    number;
+    items:    MLReview[];
+    niveles:  MLRatingLevel[];
+  };
+}
 
-async function mlFetch<T>(path: string, revalidate = 3600): Promise<T | null> {
+// ─── Scraper principal ────────────────────────────────────────────────────────
+
+async function scrapeMLPage(urlMl: string, revalidate = 1800): Promise<ScrapedData | null> {
   try {
-    const res = await fetch(`${ML_API}${path}`, {
-      headers: { Accept: 'application/json' },
+    const res = await fetch(urlMl, {
+      headers: {
+        'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept':          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'es-AR,es;q=0.9,en;q=0.8',
+      },
       next: { revalidate },
     });
-    if (!res.ok) return null;
-    return res.json() as Promise<T>;
-  } catch {
+
+    if (!res.ok) {
+      console.warn(`[ML Scraper] ${res.status} para ${urlMl}`);
+      return null;
+    }
+
+    const html = await res.text();
+
+    // Extraer todos los bloques JSON-LD
+    const jsonLdBlocks: Record<string, unknown>[] = [];
+    const regex = /<script[^>]+type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g;
+    let m: RegExpExecArray | null;
+    while ((m = regex.exec(html)) !== null) {
+      try { jsonLdBlocks.push(JSON.parse(m[1])); } catch { /* bloque inválido */ }
+    }
+
+    // Aplanar @graph si existe
+    const allBlocks: Record<string, unknown>[] = [];
+    for (const block of jsonLdBlocks) {
+      if (Array.isArray(block['@graph'])) {
+        allBlocks.push(...(block['@graph'] as Record<string, unknown>[]));
+      } else {
+        allBlocks.push(block);
+      }
+    }
+
+    const product    = allBlocks.find((b) => b['@type'] === 'Product');
+    const breadcrumb = allBlocks.find((b) => b['@type'] === 'BreadcrumbList');
+
+    if (!product) {
+      console.warn(`[ML Scraper] No se encontró JSON-LD Product en ${urlMl}`);
+      return null;
+    }
+
+    // ── Categoría desde BreadcrumbList ────────────────────────────────────────
+    let categoria: MLCategoria = { id: '', nombre: 'Productos', slug: 'productos' };
+    const items = (breadcrumb?.itemListElement as { name?: string; position?: number }[]) ?? [];
+    // El breadcrumb suele ser: Inicio > CatN-1 > Cat > Producto
+    // Tomamos el penúltimo elemento (antes del producto)
+    if (items.length >= 2) {
+      const catItem = items[items.length - 2];
+      const nombre  = catItem?.name ?? 'Productos';
+      categoria = { id: '', nombre, slug: generarSlug(nombre) };
+    }
+
+    // ── Imágenes ──────────────────────────────────────────────────────────────
+    const rawImages = product['image'];
+    let imagenes: string[] = [];
+    if (Array.isArray(rawImages)) {
+      imagenes = rawImages.map((img) =>
+        typeof img === 'string' ? img : (img as { url?: string; contentUrl?: string }).url ?? (img as { contentUrl?: string }).contentUrl ?? ''
+      ).filter(Boolean);
+    } else if (typeof rawImages === 'string') {
+      imagenes = [rawImages];
+    }
+
+    // ── Oferta (precio, moneda, stock) ────────────────────────────────────────
+    const rawOffers = product['offers'];
+    const offer = Array.isArray(rawOffers) ? (rawOffers as Record<string, unknown>[])[0] : rawOffers as Record<string, unknown> | undefined;
+    const precio  = offer?.price  ? parseFloat(String(offer.price))  : undefined;
+    const moneda  = String(offer?.priceCurrency ?? 'ARS');
+    const stock   = String(offer?.availability ?? '').includes('InStock');
+
+    // ── Condición ─────────────────────────────────────────────────────────────
+    const condStr = String(product['itemCondition'] ?? '');
+    const condicion = condStr.includes('NewCondition')  ? 'Nuevo'
+      : condStr.includes('UsedCondition') ? 'Usado'
+      : 'Nuevo';
+
+    // ── Marca ─────────────────────────────────────────────────────────────────
+    const brandRaw = product['brand'] as { name?: string } | undefined;
+    const marca = brandRaw?.name ?? undefined;
+
+    // ── Rating agregado ───────────────────────────────────────────────────────
+    const aggRating = product['aggregateRating'] as { ratingValue?: unknown; reviewCount?: unknown; ratingCount?: unknown } | undefined;
+    const reviews = aggRating
+      ? {
+          promedio: parseFloat(String(aggRating.ratingValue ?? 0)) || 0,
+          total:    parseInt(String(aggRating.reviewCount ?? aggRating.ratingCount ?? 0)) || 0,
+          items:    [] as MLReview[],
+          niveles:  [] as MLRatingLevel[],
+        }
+      : undefined;
+
+    return {
+      nombre: String(product['name'] ?? ''),
+      precio,
+      moneda,
+      imagenes,
+      stock,
+      condicion,
+      marca,
+      categoria,
+      reviews,
+    };
+  } catch (e) {
+    console.error('[ML Scraper] Error inesperado:', e);
     return null;
   }
 }
 
-// ─── Item ─────────────────────────────────────────────────────────────────────
-
-export async function getMLItem(itemId: string): Promise<MLItem | null> {
-  return mlFetch<MLItem>(`/items/${itemId}`, 1800); // 30 min (precios cambian)
-}
-
-// ─── Categoría desde ML ───────────────────────────────────────────────────────
-
-interface MLCategoryRaw {
-  id: string;
-  name: string;
-  path_from_root?: Array<{ id: string; name: string }>;
-}
-
-export async function getMLCategoria(categoryId: string): Promise<MLCategoria> {
-  const data = await mlFetch<MLCategoryRaw>(`/categories/${categoryId}`, 86400); // 24 hs
-  const nombre = data?.name ?? 'Productos';
-  return {
-    id: categoryId,
-    nombre,
-    slug: generarSlug(nombre),
-  };
-}
-
-// ─── Reviews ─────────────────────────────────────────────────────────────────
-
-export async function getMLReviews(itemId: string): Promise<MLReviewsResponse | null> {
-  return mlFetch<MLReviewsResponse>(`/reviews/item/${itemId}`, 7200); // 2 hs
-}
-
 // ─── Link de afiliado ─────────────────────────────────────────────────────────
 
-export function buildAffiliateLink(urlMl: string, permalink?: string): string {
+export function buildAffiliateLink(urlMl: string): string {
   const affId = process.env.ML_AFFILIATE_ID ?? '';
-  // Si ya tiene parámetros de afiliado, usarla directamente
-  if (urlMl && (urlMl.includes('aff_id') || urlMl.includes('utm_source'))) return urlMl;
-  // Construir desde permalink del item
-  const base = permalink ?? urlMl;
-  if (!base || base === '#') return '#';
-  const sep = base.includes('?') ? '&' : '?';
-  return `${base}${sep}aff_id=${affId}&aff_platform=web`;
+  if (!urlMl || urlMl === '#') return '#';
+  if (urlMl.includes('aff_id') || urlMl.includes('utm_source')) return urlMl;
+  const sep = urlMl.includes('?') ? '&' : '?';
+  return `${urlMl}${sep}aff_id=${affId}&aff_platform=web`;
 }
 
-// ─── Imágenes optimizadas ─────────────────────────────────────────────────────
-
-export function getAllImages(item: MLItem): string[] {
-  if (item.pictures?.length > 0) {
-    return item.pictures
-      .map((p) => (p.secure_url || p.url).replace(/-[A-Z]\.jpg$/, '-L.jpg'))
-      .slice(0, 8);
-  }
-  return [item.thumbnail.replace(/-[A-Z]\.jpg$/, '-L.jpg')];
-}
-
-// ─── Condición en español ─────────────────────────────────────────────────────
-
-export function condicionLabel(condition: string): string {
-  const map: Record<string, string> = {
-    new: 'Nuevo',
-    used: 'Usado',
-    not_specified: 'Sin especificar',
-  };
-  return map[condition] ?? 'Nuevo';
-}
-
-// ─── Atributo por ID ──────────────────────────────────────────────────────────
-
-export function getAtributo(item: MLItem, id: string): string | null {
-  return item.attributes?.find((a) => a.id === id)?.value_name ?? null;
-}
-
-// ─── Enriquecer producto (Sheet + ML API + Reviews + Categoría) ───────────────
+// ─── Enriquecer producto (Sheet + Scraper) ────────────────────────────────────
 
 export async function enriquecerProducto(producto: ProductoSheet): Promise<ProductoCompleto> {
-  const [mlItem, mlReviews] = await Promise.all([
-    getMLItem(producto.mlItemId),
-    getMLReviews(producto.mlItemId),
-  ]);
-
-  // Categoría desde ML (usa category_id del item)
-  const categoria = mlItem?.category_id
-    ? await getMLCategoria(mlItem.category_id)
-    : { id: '', nombre: 'Productos', slug: 'productos' };
-
-  const imagenes = mlItem ? getAllImages(mlItem) : [];
-  const stock = (mlItem?.available_quantity ?? 0) > 0;
-  const condicion = condicionLabel(mlItem?.condition ?? 'new');
-  const marca = getAtributo(mlItem!, 'BRAND') ?? undefined;
-
-  const reviews = mlReviews
-    ? {
-        promedio: mlReviews.rating_average ?? 0,
-        total: mlReviews.paging?.total ?? 0,
-        items: (mlReviews.reviews ?? mlReviews.data ?? []).slice(0, 10),
-        niveles: mlReviews.rating_levels ?? [],
-      }
-    : undefined;
+  const scraped = await scrapeMLPage(producto.urlMl);
 
   return {
     ...producto,
-    nombre:      mlItem?.title ?? producto.slug,
-    precio:      mlItem?.price,
-    moneda:      mlItem?.currency_id ?? 'ARS',
-    imagenes,
-    stock,
-    condicion,
-    marca,
-    permalink:   mlItem?.permalink ?? producto.urlMl,
-    urlAfiliado: buildAffiliateLink(producto.urlMl, mlItem?.permalink),
-    categoria,
-    reviews,
+    nombre:      scraped?.nombre     || producto.slug,
+    precio:      scraped?.precio,
+    moneda:      scraped?.moneda     ?? 'ARS',
+    imagenes:    scraped?.imagenes   ?? [],
+    stock:       scraped?.stock      ?? false,
+    condicion:   scraped?.condicion  ?? 'Nuevo',
+    marca:       scraped?.marca,
+    permalink:   producto.urlMl,
+    urlAfiliado: buildAffiliateLink(producto.urlMl),
+    categoria:   scraped?.categoria  ?? { id: '', nombre: 'Productos', slug: 'productos' },
+    reviews:     scraped?.reviews,
   };
 }
 
@@ -144,9 +179,7 @@ export function agruparPorCategoria(
   const map = new Map<string, { categoria: MLCategoria; productos: ProductoCompleto[] }>();
   for (const prod of productos) {
     const key = prod.categoria.slug;
-    if (!map.has(key)) {
-      map.set(key, { categoria: prod.categoria, productos: [] });
-    }
+    if (!map.has(key)) map.set(key, { categoria: prod.categoria, productos: [] });
     map.get(key)!.productos.push(prod);
   }
   return map;

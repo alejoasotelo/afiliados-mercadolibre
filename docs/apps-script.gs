@@ -141,13 +141,14 @@ function procesarUrlML(sheet, row, url) {
 // ─── EXTRAER ITEM ID DESDE URL ────────────────────────────────────────────────
 
 function extraerItemId(url) {
-  // Formatos soportados:
-  // https://articulo.mercadolibre.com.ar/MLA-1234567890-titulo-del-producto
-  // https://www.mercadolibre.com.ar/.../p/MLA1234567890
-  // https://mercadolibre.com.ar/MLA1234567890
-  // https://articulo.mercadolibre.com.ar/MLA1234567890
+  // Prioridad 1: parámetro wid= — URLs de afiliado incluyen el item real aquí
+  // ej: ...?wid=MLA2243187068 (el ID del catálogo /p/MLA24774075 es distinto y no funciona en /items/)
+  var widMatch = url.match(/[?&]wid=(MLA\d+)/i);
+  if (widMatch) return widMatch[1];
 
-  // Buscar patrón MLA seguido de guión opcional y dígitos
+  // Formatos directos:
+  // https://articulo.mercadolibre.com.ar/MLA-1234567890-titulo
+  // https://mercadolibre.com.ar/MLA1234567890
   var match = url.match(/MLA[-]?(\d+)/i);
   if (match) {
     return 'MLA' + match[1]; // normalizar sin guión

@@ -189,23 +189,40 @@ function fetchMLItem(itemId) {
 }
 
 // Obtener item real desde un producto de catálogo (/p/MLAXXX)
-// Usa el buy_box_winner del producto para obtener el item activo
+// Intenta buy_box_winner primero; si es null, busca via search API
 function fetchMLItemFromCatalog(catalogId) {
   try {
+    // 1. Intentar buy_box_winner
     var url = CONFIG.SITE_URL + '/api/ml-proxy?resource=products&id=' + catalogId;
     var response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
     var code = response.getResponseCode();
-    Logger.log('fetchMLItemFromCatalog ' + catalogId + ' → HTTP ' + code);
-    if (code !== 200) return null;
-    var product = JSON.parse(response.getContentText());
-    // El buy_box_winner contiene el item activo que ganó el catálogo
-    var winnerId = product.buy_box_winner && product.buy_box_winner.item_id;
-    if (!winnerId) {
-      Logger.log('fetchMLItemFromCatalog: no buy_box_winner en ' + catalogId);
+    Logger.log('fetchMLItemFromCatalog products/' + catalogId + ' → HTTP ' + code);
+    if (code === 200) {
+      var product = JSON.parse(response.getContentText());
+      var winnerId = product.buy_box_winner && product.buy_box_winner.item_id;
+      if (winnerId) {
+        Logger.log('fetchMLItemFromCatalog: buy_box_winner = ' + winnerId);
+        return fetchMLItem(winnerId);
+      }
+      Logger.log('fetchMLItemFromCatalog: buy_box_winner es null, intentando search...');
+    }
+
+    // 2. Fallback: buscar items listados bajo este catalog_product_id
+    var searchUrl = CONFIG.SITE_URL + '/api/ml-proxy?resource=search&id=' + catalogId;
+    var searchResponse = UrlFetchApp.fetch(searchUrl, { muteHttpExceptions: true });
+    var searchCode = searchResponse.getResponseCode();
+    Logger.log('fetchMLItemFromCatalog search/' + catalogId + ' → HTTP ' + searchCode);
+    if (searchCode !== 200) return null;
+
+    var searchData = JSON.parse(searchResponse.getContentText());
+    var ids = searchData.ids || [];
+    Logger.log('fetchMLItemFromCatalog search ids: ' + JSON.stringify(ids));
+    if (!ids.length) {
+      Logger.log('fetchMLItemFromCatalog: search no devolvió items para ' + catalogId);
       return null;
     }
-    Logger.log('fetchMLItemFromCatalog: winner = ' + winnerId);
-    return fetchMLItem(winnerId);
+    return fetchMLItem(ids[0]);
+
   } catch (e) {
     Logger.log('fetchMLItemFromCatalog error: ' + e.message);
     return null;

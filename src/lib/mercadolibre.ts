@@ -75,12 +75,13 @@ async function scrapeMLPage(urlMl: string, revalidate = 1800): Promise<ScrapedDa
 
     // ── Categoría desde BreadcrumbList ────────────────────────────────────────
     let categoria: MLCategoria = { id: '', nombre: 'Productos', slug: 'productos' };
-    const items = (breadcrumb?.itemListElement as { name?: string; position?: number }[]) ?? [];
+    const items = (breadcrumb?.itemListElement as { name?: string; item?: { name?: string }; position?: number }[]) ?? [];
     // El breadcrumb suele ser: Inicio > CatN-1 > Cat > Producto
     // Tomamos el penúltimo elemento (antes del producto)
+    // ML puede poner el nombre en la raíz (name) o anidado (item.name)
     if (items.length >= 2) {
       const catItem = items[items.length - 2];
-      const nombre  = catItem?.name ?? 'Productos';
+      const nombre  = catItem?.item?.name ?? catItem?.name ?? 'Productos';
       categoria = { id: '', nombre, slug: generarSlug(nombre) };
     }
 
@@ -109,8 +110,11 @@ async function scrapeMLPage(urlMl: string, revalidate = 1800): Promise<ScrapedDa
       : 'Nuevo';
 
     // ── Marca ─────────────────────────────────────────────────────────────────
-    const brandRaw = product['brand'] as { name?: string } | undefined;
-    const marca = brandRaw?.name ?? undefined;
+    // ML puede enviar "brand" como string ("Volkswagen") o como objeto ({name: "VW"})
+    const brandRaw = product['brand'];
+    const marca = typeof brandRaw === 'string'
+      ? brandRaw
+      : (brandRaw as { name?: string } | undefined)?.name ?? undefined;
 
     // ── Rating agregado ───────────────────────────────────────────────────────
     const aggRating = product['aggregateRating'] as { ratingValue?: unknown; reviewCount?: unknown; ratingCount?: unknown } | undefined;

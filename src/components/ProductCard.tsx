@@ -8,7 +8,7 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ producto }: ProductCardProps) {
-  const href = `/${producto.categoriaSlug}/${producto.slug}`;
+  const href = `/${producto.categoria.slug}/${producto.slug}`;
   const imagen = producto.imagenes[0] ?? '/placeholder.jpg';
   const precio = producto.precio
     ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(producto.precio)

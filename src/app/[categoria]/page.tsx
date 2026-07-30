@@ -11,10 +11,14 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://tienda.alejosotelo
 
 // ─── Rutas estáticas: una por cada categoría detectada en ML ─────────────────
 export async function generateStaticParams() {
-  const productosSheet = await getProductos();
-  const todos = await Promise.all(productosSheet.map(enriquecerProducto));
-  const categorias = agruparPorCategoria(todos);
-  return Array.from(categorias.keys()).map((slug) => ({ categoria: slug }));
+  try {
+    const productosSheet = await getProductos();
+    const todos = await Promise.all(productosSheet.map(enriquecerProducto));
+    const categorias = agruparPorCategoria(todos);
+    return Array.from(categorias.keys()).map((slug) => ({ categoria: slug }));
+  } catch {
+    return [];
+  }
 }
 
 // ─── Meta tags ────────────────────────────────────────────────────────────────

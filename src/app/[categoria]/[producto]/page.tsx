@@ -13,9 +13,14 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://tienda.alejosotelo
 
 // ─── Rutas estáticas ──────────────────────────────────────────────────────────
 export async function generateStaticParams() {
-  const productosSheet = await getProductos();
-  const todos = await Promise.all(productosSheet.map(enriquecerProducto));
-  return todos.map((p) => ({ categoria: p.categoria.slug, producto: p.slug }));
+  try {
+    const productosSheet = await getProductos();
+    const todos = await Promise.all(productosSheet.map(enriquecerProducto));
+    return todos.map((p) => ({ categoria: p.categoria.slug, producto: p.slug }));
+  } catch {
+    // Si la API no está disponible en build time, las páginas se generan on-demand
+    return [];
+  }
 }
 
 // ─── Meta tags ────────────────────────────────────────────────────────────────

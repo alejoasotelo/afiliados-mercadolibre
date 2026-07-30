@@ -28,7 +28,7 @@ var CONFIG = {
   // Webhook de Cloudflare Pages Deploy Hook
   // Lo obtenés en: CF Dashboard → Pages → tu proyecto → Settings → Builds & deployments → Deploy Hooks
   // Hacé clic en "Add deploy hook", dale un nombre (ej: "sheet-trigger"), copiá la URL
-  CLOUDFLARE_DEPLOY_HOOK: 'https://api.cloudflare.com/client/v4/pages/webhooks/deploy_hooks/TU_HOOK_ID_AQUI',
+  CLOUDFLARE_DEPLOY_HOOK: 'https://api.cloudflare.com/client/v4/pages/webhooks/deploy_hooks/c231ad47-5a97-4c0b-a033-51bed41c8378',
 
   // Nombre del tab de productos en el Sheet
   SHEET_PRODUCTOS: 'productos',

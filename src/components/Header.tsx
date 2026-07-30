@@ -3,9 +3,14 @@ import { getProductos } from '@/lib/sheets';
 import { enriquecerProducto, agruparPorCategoria } from '@/lib/mercadolibre';
 
 export async function Header() {
-  const productosSheet = await getProductos();
-  const todos = await Promise.all(productosSheet.map(enriquecerProducto));
-  const categorias = agruparPorCategoria(todos);
+  let categorias: ReturnType<typeof agruparPorCategoria>;
+  try {
+    const productosSheet = await getProductos();
+    const todos = await Promise.all(productosSheet.map(enriquecerProducto));
+    categorias = agruparPorCategoria(todos);
+  } catch {
+    categorias = new Map();
+  }
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">

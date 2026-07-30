@@ -6,8 +6,13 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://tienda.alejosotelo
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const productosSheet = await getProductos();
-  const todos = await Promise.all(productosSheet.map(enriquecerProducto));
+  let todos: Awaited<ReturnType<typeof enriquecerProducto>>[] = [];
+  try {
+    const productosSheet = await getProductos();
+    todos = await Promise.all(productosSheet.map(enriquecerProducto));
+  } catch {
+    return [{ url: SITE_URL, lastModified: new Date(), changeFrequency: 'daily', priority: 1 }];
+  }
   const categorias = agruparPorCategoria(todos);
 
   const home: MetadataRoute.Sitemap = [{

@@ -10,8 +10,13 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://tienda.alejosotelo
 const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME ?? 'Mejores Productos MercadoLibre';
 
 export default async function HomePage() {
-  const productosSheet = await getProductos();
-  const productos = await Promise.all(productosSheet.map(enriquecerProducto));
+  let productos: Awaited<ReturnType<typeof enriquecerProducto>>[] = [];
+  try {
+    const productosSheet = await getProductos();
+    productos = await Promise.all(productosSheet.map(enriquecerProducto));
+  } catch {
+    // API no disponible en build time — las páginas se regeneran con ISR al primer request
+  }
   const categorias = agruparPorCategoria(productos);
 
   const websiteSchema = {

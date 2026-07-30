@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import Link from 'next/link';
 import { getProductos } from '@/lib/sheets';
 import { enriquecerProducto, agruparPorCategoria } from '@/lib/mercadolibre';

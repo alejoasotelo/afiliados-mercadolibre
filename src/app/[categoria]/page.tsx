@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getProductos } from '@/lib/sheets';

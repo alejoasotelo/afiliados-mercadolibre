@@ -30,6 +30,11 @@ var CONFIG = {
   // Hacé clic en "Add deploy hook", dale un nombre (ej: "sheet-trigger"), copiá la URL
   CLOUDFLARE_DEPLOY_HOOK: 'https://api.cloudflare.com/client/v4/pages/webhooks/deploy_hooks/c231ad47-5a97-4c0b-a033-51bed41c8378',
 
+  // URL del sitio desplegado (sin barra final)
+  // Apps Script no puede llamar a api.mercadolibre.com directamente (PolicyAgent 403),
+  // así que usamos el proxy en /api/ml-proxy que sí puede hacer esas llamadas.
+  SITE_URL: 'https://afiliados-mercadolibre.pages.dev',
+
   // Nombre del tab de productos en el Sheet
   SHEET_PRODUCTOS: 'productos',
 
@@ -40,8 +45,6 @@ var CONFIG = {
   COL_DESC_SEO:      4,  // D
   COL_ACTIVO:        5,  // E
 
-  // API de MercadoLibre (no requiere autenticación para datos públicos)
-  ML_API_BASE: 'https://api.mercadolibre.com',
 };
 
 // ─── TRIGGER PRINCIPAL ───────────────────────────────────────────────────────
@@ -100,8 +103,18 @@ function procesarUrlML(sheet, row, url) {
 
     // 3. Obtener datos del item desde ML API
     var itemData = fetchMLItem(itemId);
+
+    // Fallback: URL de catálogo (/p/MLAXXX) → intentar via products API
     if (!itemData) {
-      mostrarError(sheet, row, 'No se pudo obtener el item de ML. Verificá la URL.');
+      var catalogMatch = url.match(/\/p\/(MLA\d+)/i);
+      if (catalogMatch) {
+        itemData = fetchMLItemFromCatalog(catalogMatch[1]);
+        if (itemData) itemId = itemData.id;
+      }
+    }
+
+    if (!itemData) {
+      mostrarError(sheet, row, 'No se pudo obtener el item de ML. Verificá el Registro de ejecución para ver el código HTTP.');
       return;
     }
 
@@ -160,13 +173,41 @@ function extraerItemId(url) {
 
 function fetchMLItem(itemId) {
   try {
-    var response = UrlFetchApp.fetch(
-      CONFIG.ML_API_BASE + '/items/' + itemId,
-      { muteHttpExceptions: true }
-    );
-    if (response.getResponseCode() !== 200) return null;
+    // Usamos el proxy en nuestro sitio para evitar el bloqueo de PolicyAgent de Google
+    var url = CONFIG.SITE_URL + '/api/ml-proxy?resource=items&id=' + itemId;
+    var response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    var code = response.getResponseCode();
+    if (code !== 200) {
+      Logger.log('fetchMLItem ' + itemId + ' → HTTP ' + code + ': ' + response.getContentText().substring(0, 200));
+      return null;
+    }
     return JSON.parse(response.getContentText());
   } catch (e) {
+    Logger.log('fetchMLItem error: ' + e.message);
+    return null;
+  }
+}
+
+// Obtener item real desde un producto de catálogo (/p/MLAXXX)
+// Usa el buy_box_winner del producto para obtener el item activo
+function fetchMLItemFromCatalog(catalogId) {
+  try {
+    var url = CONFIG.SITE_URL + '/api/ml-proxy?resource=products&id=' + catalogId;
+    var response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    var code = response.getResponseCode();
+    Logger.log('fetchMLItemFromCatalog ' + catalogId + ' → HTTP ' + code);
+    if (code !== 200) return null;
+    var product = JSON.parse(response.getContentText());
+    // El buy_box_winner contiene el item activo que ganó el catálogo
+    var winnerId = product.buy_box_winner && product.buy_box_winner.item_id;
+    if (!winnerId) {
+      Logger.log('fetchMLItemFromCatalog: no buy_box_winner en ' + catalogId);
+      return null;
+    }
+    Logger.log('fetchMLItemFromCatalog: winner = ' + winnerId);
+    return fetchMLItem(winnerId);
+  } catch (e) {
+    Logger.log('fetchMLItemFromCatalog error: ' + e.message);
     return null;
   }
 }

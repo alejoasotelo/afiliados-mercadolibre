@@ -14,7 +14,7 @@ export async function generateStaticParams() {
   const productosSheet = await getProductos();
   const todos = await Promise.all(productosSheet.map(enriquecerProducto));
   const categorias = agruparPorCategoria(todos);
-  return [...categorias.keys()].map((slug) => ({ categoria: slug }));
+  return Array.from(categorias.keys()).map((slug) => ({ categoria: slug }));
 }
 
 // ─── Meta tags ────────────────────────────────────────────────────────────────

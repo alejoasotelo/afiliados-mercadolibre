@@ -14,7 +14,7 @@ export async function Header() {
           🛒 Mejores Productos
         </Link>
         <nav className="hidden md:flex items-center gap-1 overflow-x-auto flex-1" aria-label="Categorías">
-          {[...categorias.entries()].map(([slug, { categoria }]) => (
+          {Array.from(categorias.entries()).map(([slug, { categoria }]) => (
             <Link
               key={slug}
               href={`/${slug}`}

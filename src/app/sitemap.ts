@@ -17,7 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 1,
   }];
 
-  const catUrls: MetadataRoute.Sitemap = [...categorias.keys()].map((slug) => ({
+  const catUrls: MetadataRoute.Sitemap = Array.from(categorias.keys()).map((slug) => ({
     url: `${SITE_URL}/${slug}`,
     lastModified: new Date(),
     changeFrequency: 'daily',

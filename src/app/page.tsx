@@ -44,7 +44,7 @@ export default async function HomePage() {
             Recomendaciones con reseñas reales de compradores verificados. Comprá con confianza.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            {[...categorias.entries()].slice(0, 8).map(([slug, { categoria }]) => (
+            {Array.from(categorias.entries()).slice(0, 8).map(([slug, { categoria }]) => (
               <Link
                 key={slug}
                 href={`/${slug}`}
@@ -58,7 +58,7 @@ export default async function HomePage() {
       </section>
 
       {/* Categorías */}
-      {[...categorias.entries()].map(([slug, { categoria, productos: prods }]) => (
+      {Array.from(categorias.entries()).map(([slug, { categoria, productos: prods }]) => (
         <section key={slug} className="max-w-7xl mx-auto px-4 py-10">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-2xl font-bold text-gray-900">{categoria.nombre}</h2>

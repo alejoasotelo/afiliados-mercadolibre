@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: { params: { categoria: string
   const data = await getArticleProps(params.producto);
   if (!data) return {};
   const { prod } = data;
-  const url = `${SITE_URL}/productos/${prod.slug}`;
+  const url = `${SITE_URL}/${prod.slug}`;
   const imagen = prod.imagenes[0] ?? `${SITE_URL}/og-default.jpg`;
   return {
     title: prod.titulo,

@@ -30,7 +30,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const prodUrls: MetadataRoute.Sitemap = todos.map((prod) => ({
-    url: `${SITE_URL}/${prod.categoria.slug}/${prod.slug}`,
+    url: `${SITE_URL}/${prod.slug}`,
     lastModified: new Date(),
     changeFrequency: 'hourly',
     priority: 0.9,

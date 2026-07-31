@@ -165,7 +165,7 @@ export async function enriquecerProducto(producto: ProductoSheet): Promise<Produ
     imagenes:    producto.imagenes,
     stock:       true,
     condicion:   'Nuevo',
-    marca:       producto.marca || undefined,
+    marca:       producto.marca,
     permalink:   producto.urlMl,
     urlAfiliado: buildAffiliateLink(producto.urlMl),
     categoria:   { id: '', nombre: 'Productos', slug: 'productos' },

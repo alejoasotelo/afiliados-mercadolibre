@@ -35,7 +35,10 @@ export async function getProductos(): Promise<ProductoSheet[]> {
       return (activo === 'si' || activo === 'true') && slug;
     })
     .map((row) => {
-      const precioRaw = (row[10] ?? '').trim().replace(/\./g, '').replace(',', '.'); // col K
+      // col K — puede venir con formato moneda ("$ 150.000,50"); se descarta todo
+      // lo que no sea dígito/separador antes de convertir "." miles / "," decimal
+      const precioClean = (row[10] ?? '').replace(/[^\d.,-]/g, '').trim();
+      const precioRaw = precioClean.replace(/\./g, '').replace(',', '.');
       const precio = precioRaw ? parseFloat(precioRaw) : undefined;
       return {
         urlMl:       (row[0] ?? '').trim(),

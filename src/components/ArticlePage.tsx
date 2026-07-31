@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { JsonLd, buildProductSchema, buildBreadcrumbSchema } from '@/components/JsonLd';
@@ -12,8 +15,13 @@ interface ArticlePageProps {
 }
 
 export function ArticlePage({ prod, relacionados, urlAfiliado }: ArticlePageProps) {
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const url = `${SITE_URL}/${prod.slug}`;
   const imagen = prod.imagenes[0] ?? `${SITE_URL}/og-default.jpg`;
+  const imagenSeleccionada = prod.imagenes[selectedIndex] ?? imagen;
+  const precio = prod.precio
+    ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(prod.precio)
+    : null;
 
   const productSchema = buildProductSchema({
     nombre: prod.titulo,
@@ -63,28 +71,42 @@ export function ArticlePage({ prod, relacionados, urlAfiliado }: ArticlePageProp
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden mb-12">
           {prod.imagenes.length > 0 && (
             <div className="bg-gray-50 p-6">
-              <div className="relative aspect-square max-w-sm mx-auto rounded-xl overflow-hidden">
-                <Image
-                  src={imagen}
-                  alt={prod.titulo}
-                  fill
-                  sizes="(max-width: 640px) 100vw, 400px"
-                  className="object-contain"
-                  priority
-                />
-              </div>
-              {prod.imagenes.length > 1 && (
-                <div className="flex justify-center gap-2 mt-4">
-                  {prod.imagenes.map((img, i) => (
-                    <div key={i} className="relative w-14 h-14 flex-shrink-0 bg-white rounded-lg overflow-hidden border-2 border-gray-200 hover:border-ml-blue">
-                      <Image src={img} alt={`${prod.titulo} ${i + 1}`} fill sizes="56px" className="object-contain p-1" />
-                    </div>
-                  ))}
+              <div className="flex gap-3">
+                {prod.imagenes.length > 1 && (
+                  <div className="flex flex-col gap-2">
+                    {prod.imagenes.map((img, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setSelectedIndex(i)}
+                        aria-label={`Ver imagen ${i + 1}`}
+                        aria-current={i === selectedIndex}
+                        className={`relative w-14 h-14 flex-shrink-0 bg-white rounded-lg overflow-hidden border-2 transition-colors ${
+                          i === selectedIndex ? 'border-ml-blue' : 'border-gray-200 hover:border-ml-blue'
+                        }`}
+                      >
+                        <Image src={img} alt={`${prod.titulo} ${i + 1}`} fill sizes="56px" className="object-contain p-1" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="relative aspect-square flex-1 max-w-sm mx-auto rounded-xl overflow-hidden">
+                  <Image
+                    src={imagenSeleccionada}
+                    alt={prod.titulo}
+                    fill
+                    sizes="(max-width: 640px) 100vw, 400px"
+                    className="object-contain"
+                    priority
+                  />
                 </div>
-              )}
+              </div>
             </div>
           )}
           <div className="p-6">
+            {precio && (
+              <p className="text-3xl font-bold text-gray-900 mb-4">{precio}</p>
+            )}
             <a
               href={urlAfiliado}
               target="_blank"

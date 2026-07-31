@@ -160,7 +160,7 @@ export async function enriquecerProducto(producto: ProductoSheet): Promise<Produ
   return {
     ...producto,
     nombre:      producto.titulo || producto.slug,
-    precio:      undefined,
+    precio:      producto.precio,
     moneda:      'ARS',
     imagenes:    producto.imagenes,
     stock:       true,

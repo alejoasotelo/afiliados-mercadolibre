@@ -3,7 +3,7 @@
  *
  * Estructura del tab "productos" (carga manual):
  *   A: url_ml | B: slug | C: titulo | D: descripcion |
- *   E: imagen_1 | F: imagen_2 | G: imagen_3 | H: marca | I: activo | J: relacionados
+ *   E: imagen_1 | F: imagen_2 | G: imagen_3 | H: marca | I: activo | J: relacionados | K: precio
  *
  * "relacionados" = slugs separados por coma (ej: "producto-a,producto-b")
  */
@@ -25,7 +25,7 @@ async function fetchSheet(range: string): Promise<string[][]> {
 // ─── Leer todos los productos activos desde el Sheet ─────────────────────────
 
 export async function getProductos(): Promise<ProductoSheet[]> {
-  const rows = await fetchSheet('productos!A:J');
+  const rows = await fetchSheet('productos!A:K');
   if (rows.length < 2) return [];
   const [, ...data] = rows;
   return data
@@ -34,15 +34,20 @@ export async function getProductos(): Promise<ProductoSheet[]> {
       const slug   = (row[1] ?? '').trim();               // col B
       return (activo === 'si' || activo === 'true') && slug;
     })
-    .map((row) => ({
-      urlMl:       (row[0] ?? '').trim(),
-      slug:        (row[1] ?? '').trim(),
-      titulo:      (row[2] ?? '').trim(),
-      descripcion: (row[3] ?? '').trim(),
-      imagenes:    [row[4], row[5], row[6]].map((v) => (v ?? '').trim()).filter(Boolean),
-      marca:       (row[7] ?? '').trim(),
-      relacionados: (row[9] ?? '').split(',').map((s) => s.trim()).filter(Boolean),
-    }));
+    .map((row) => {
+      const precioRaw = (row[10] ?? '').trim().replace(/\./g, '').replace(',', '.'); // col K
+      const precio = precioRaw ? parseFloat(precioRaw) : undefined;
+      return {
+        urlMl:       (row[0] ?? '').trim(),
+        slug:        (row[1] ?? '').trim(),
+        titulo:      (row[2] ?? '').trim(),
+        descripcion: (row[3] ?? '').trim(),
+        imagenes:    [row[4], row[5], row[6]].map((v) => (v ?? '').trim()).filter(Boolean),
+        marca:       (row[7] ?? '').trim(),
+        relacionados: (row[9] ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+        precio: precio !== undefined && !isNaN(precio) ? precio : undefined,
+      };
+    });
 }
 
 export async function getProducto(slug: string): Promise<ProductoSheet | null> {

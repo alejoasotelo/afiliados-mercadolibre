@@ -1,6 +1,6 @@
 // ─── Producto leído desde Google Sheets (carga manual) ───────────────────────
 // Columnas: A:url_ml | B:slug | C:titulo | D:descripcion |
-//           E:imagen_1 | F:imagen_2 | G:imagen_3 | H:marca | I:activo | J:relacionados
+//           E:imagen_1 | F:imagen_2 | G:imagen_3 | H:marca | I:activo | J:relacionados | K:precio
 export interface ProductoSheet {
   urlMl:       string;    // col A — URL del producto en MercadoLibre
   slug:        string;    // col B — slug para la URL del sitio
@@ -10,6 +10,7 @@ export interface ProductoSheet {
   marca:       string;    // col H — marca del producto
   // col I — activo (filtrado en sheets.ts, no se expone aquí)
   relacionados: string[]; // col J — slugs de productos relacionados (separados por coma)
+  precio?:     number;    // col K — precio del producto
 }
 
 // ─── Categoría obtenida desde ML API ─────────────────────────────────────────

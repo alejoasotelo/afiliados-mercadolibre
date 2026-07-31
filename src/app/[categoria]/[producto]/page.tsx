@@ -11,21 +11,17 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://tienda.alejosotelo
 
 export async function generateStaticParams() {
   const slugs = await getAllSlugs();
-  // Solo slugs con exactamente 1 "/" (2 segmentos)
+  // Los slugs del Sheet son planos (sin "/"); la categoría en la URL es fija ("productos")
   return slugs
-    .filter((s) => s.split('/').length === 2)
-    .map((s) => {
-      const [categoria, producto] = s.split('/');
-      return { categoria, producto };
-    });
+    .filter((s) => !s.includes('/'))
+    .map((producto) => ({ categoria: 'productos', producto }));
 }
 
 export async function generateMetadata({ params }: { params: { categoria: string; producto: string } }): Promise<Metadata> {
-  const slug = `${params.categoria}/${params.producto}`;
-  const data = await getArticleProps(slug);
+  const data = await getArticleProps(params.producto);
   if (!data) return {};
   const { prod } = data;
-  const url = `${SITE_URL}/${prod.slug}`;
+  const url = `${SITE_URL}/productos/${prod.slug}`;
   const imagen = prod.imagenes[0] ?? `${SITE_URL}/og-default.jpg`;
   return {
     title: prod.titulo,
@@ -36,8 +32,7 @@ export async function generateMetadata({ params }: { params: { categoria: string
 }
 
 export default async function Page({ params }: { params: { categoria: string; producto: string } }) {
-  const slug = `${params.categoria}/${params.producto}`;
-  const data = await getArticleProps(slug);
+  const data = await getArticleProps(params.producto);
   if (!data) notFound();
   return <ArticlePage {...data} />;
 }

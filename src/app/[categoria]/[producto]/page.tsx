@@ -11,14 +11,18 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://tienda.alejosotelo
 
 export async function generateStaticParams() {
   const slugs = await getAllSlugs();
-  // Los slugs del Sheet son planos (sin "/"); la categoría en la URL es fija ("productos")
+  // Slugs con exactamente 1 "/" (2 segmentos), ej: "zapatillas/algo"
   return slugs
-    .filter((s) => !s.includes('/'))
-    .map((producto) => ({ categoria: 'productos', producto }));
+    .filter((s) => s.split('/').length === 2)
+    .map((s) => {
+      const [categoria, producto] = s.split('/');
+      return { categoria, producto };
+    });
 }
 
 export async function generateMetadata({ params }: { params: { categoria: string; producto: string } }): Promise<Metadata> {
-  const data = await getArticleProps(params.producto);
+  const slug = `${params.categoria}/${params.producto}`;
+  const data = await getArticleProps(slug);
   if (!data) return {};
   const { prod } = data;
   const url = `${SITE_URL}/${prod.slug}`;
@@ -32,7 +36,8 @@ export async function generateMetadata({ params }: { params: { categoria: string
 }
 
 export default async function Page({ params }: { params: { categoria: string; producto: string } }) {
-  const data = await getArticleProps(params.producto);
+  const slug = `${params.categoria}/${params.producto}`;
+  const data = await getArticleProps(slug);
   if (!data) notFound();
   return <ArticlePage {...data} />;
 }

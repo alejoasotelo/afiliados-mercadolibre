@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ProductoCompleto } from '@/lib/types';
-import { ProductCard } from './ProductCard';
+import { CategoryProductGrid } from './CategoryProductGrid';
 
 interface CategoryPageProps {
   prefix: string;
@@ -39,11 +39,7 @@ export function CategoryPage({ prefix, productos }: CategoryPageProps) {
       <h1 className="text-2xl font-bold text-gray-900 mb-6">{titulo}</h1>
 
       {productos.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
-          {productos.map((p) => (
-            <ProductCard key={p.slug} producto={p} />
-          ))}
-        </div>
+        <CategoryProductGrid productos={productos} />
       ) : (
         <div className="py-20 text-center text-gray-400">
           <p className="text-4xl mb-4">🛒</p>

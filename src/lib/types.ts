@@ -1,9 +1,11 @@
 // ─── Producto leído desde Google Sheets (solo lo que carga el usuario) ────────
 export interface ProductoSheet {
-  mlItemId: string;       // col B — extraído automáticamente por Apps Script
-  slug: string;           // col C — generado automáticamente por Apps Script
-  descripcionSeo: string; // col D — texto SEO que escribe el usuario
-  urlMl: string;          // col A — URL original pegada por el usuario
+  urlMl: string;           // col A — URL original pegada por el usuario
+  mlItemId: string;        // col B — extraído automáticamente por Apps Script
+  slug: string;            // col C — generado automáticamente por Apps Script
+  descripcionSeo: string;  // col D — texto SEO que escribe el usuario
+  // col E — activo (filtrado en sheets.ts, no se expone aquí)
+  categoriaSlug?: string;  // col F — slug de categoría (auto-completado por Apps Script)
 }
 
 // ─── Categoría obtenida desde ML API ─────────────────────────────────────────

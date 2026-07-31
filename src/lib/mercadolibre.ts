@@ -159,6 +159,12 @@ export function buildAffiliateLink(urlMl: string): string {
 export async function enriquecerProducto(producto: ProductoSheet): Promise<ProductoCompleto> {
   const scraped = await scrapeMLPage(producto.urlMl);
 
+  // La categoría del Sheet tiene prioridad (la puso el usuario o Apps Script).
+  // Si no existe, usamos la scrapeada del breadcrumb de ML.
+  const categoriaFinal: MLCategoria = producto.categoriaSlug
+    ? { id: '', nombre: producto.categoriaSlug.replace(/-/g, ' '), slug: producto.categoriaSlug }
+    : scraped?.categoria ?? { id: '', nombre: 'Productos', slug: 'productos' };
+
   return {
     ...producto,
     nombre:      scraped?.nombre     || producto.slug,
@@ -170,7 +176,7 @@ export async function enriquecerProducto(producto: ProductoSheet): Promise<Produ
     marca:       scraped?.marca,
     permalink:   producto.urlMl,
     urlAfiliado: buildAffiliateLink(producto.urlMl),
-    categoria:   scraped?.categoria  ?? { id: '', nombre: 'Productos', slug: 'productos' },
+    categoria:   categoriaFinal,
     reviews:     scraped?.reviews,
   };
 }
@@ -191,7 +197,7 @@ export function agruparPorCategoria(
 
 // ─── Helper: generar slug desde texto ────────────────────────────────────────
 
-function generarSlug(texto: string): string {
+export function generarSlug(texto: string): string {
   return texto
     .toLowerCase()
     .normalize('NFD')

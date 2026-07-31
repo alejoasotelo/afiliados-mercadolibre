@@ -1,11 +1,11 @@
 /**
  * Google Sheets API v4 — lectura del spreadsheet (solo lectura pública con API Key)
  *
- * Estructura del tab "productos" (generada por Apps Script):
- *   A: url_ml       B: ml_item_id    C: slug    D: descripcion_seo    E: activo
+ * Estructura del tab "productos":
+ *   A: url_ml       B: ml_item_id    C: slug    D: descripcion_seo    E: activo    F: categoria_slug
  *
  * El usuario solo completa A (url) y D (descripcion_seo).
- * B, C se llenan automáticamente mediante Apps Script.
+ * B, C, F se auto-completan vía Apps Script llamando a /api/scrape.
  * E se pone "si" cuando quiere publicarlo.
  */
 
@@ -26,7 +26,7 @@ async function fetchSheet(range: string): Promise<string[][]> {
 // ─── Leer todos los productos activos desde el Sheet ─────────────────────────
 
 export async function getProductos(): Promise<ProductoSheet[]> {
-  const rows = await fetchSheet('productos!A:E');
+  const rows = await fetchSheet('productos!A:F');
   if (rows.length < 2) return [];
   const [, ...data] = rows; // saltear encabezados
   return data
@@ -37,10 +37,11 @@ export async function getProductos(): Promise<ProductoSheet[]> {
       return (activo === 'si' || activo === 'true') && itemId && slug;
     })
     .map((row) => ({
-      urlMl:         (row[0] ?? '').trim(),
-      mlItemId:      (row[1] ?? '').trim(),
-      slug:          (row[2] ?? '').trim(),
-      descripcionSeo:(row[3] ?? '').trim(),
+      urlMl:          (row[0] ?? '').trim(),
+      mlItemId:       (row[1] ?? '').trim(),
+      slug:           (row[2] ?? '').trim(),
+      descripcionSeo: (row[3] ?? '').trim(),
+      categoriaSlug:  (row[5] ?? '').trim() || undefined,
     }));
 }
 

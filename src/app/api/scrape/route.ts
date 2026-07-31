@@ -51,6 +51,40 @@ function extraerItemId(url: string): string | null {
   return m ? m[1].toUpperCase() : null;
 }
 
+/**
+ * Limpia la URL de ML antes de scrapear.
+ * - Quita el fragmento (#...) y query params superfluos
+ * - Si hay pdp_filters=item_id%3AMLA..., extrae ese ID (es el listing real)
+ *
+ * URLs problemáticas comunes:
+ *   /up/MLAU...?pdp_filters=item_id%3AMLA...#polycard_client=...
+ *   → la página carga como catálogo sin JSON-LD Product
+ *   → limpiar a /up/MLAU... resuelve el problema
+ */
+function limpiarUrlML(rawUrl: string): { urlLimpia: string; itemIdOverride: string | null } {
+  // Quitar fragmento primero
+  const sinFragmento = rawUrl.split('#')[0];
+
+  let parsed: URL;
+  try {
+    parsed = new URL(sinFragmento);
+  } catch {
+    return { urlLimpia: sinFragmento, itemIdOverride: null };
+  }
+
+  // Extraer item_id de pdp_filters si existe
+  // Viene URL-encoded: pdp_filters=item_id%3AMLA806605522
+  const pdpFilters = parsed.searchParams.get('pdp_filters') ?? '';
+  const itemIdMatch =
+    pdpFilters.match(/item_id%3A(MLA[A-Z]*\d+)/i) ??
+    pdpFilters.match(/item_id:(MLA[A-Z]*\d+)/i);
+  const itemIdOverride = itemIdMatch ? itemIdMatch[1].toUpperCase() : null;
+
+  // URL limpia = solo origen + pathname (sin query params ni fragmento)
+  const urlLimpia = parsed.origin + parsed.pathname;
+  return { urlLimpia, itemIdOverride };
+}
+
 // ─── Scraper ──────────────────────────────────────────────────────────────────
 
 async function scrapear(urlMl: string) {
@@ -149,11 +183,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'La URL no parece ser de MercadoLibre' }, { status: 400 });
   }
 
-  // Extraer item ID desde la URL
-  const mlItemId = extraerItemId(url);
+  // Limpiar URL antes de scrapear (quita fragment + query params, extrae item_id real)
+  const { urlLimpia, itemIdOverride } = limpiarUrlML(url);
+  const mlItemId = itemIdOverride ?? extraerItemId(urlLimpia);
 
   try {
-    const datos = await scrapear(url);
+    const datos = await scrapear(urlLimpia);
     return NextResponse.json(
       { mlItemId, ...datos },
       { headers: { 'Cache-Control': 'public, max-age=1800', 'Access-Control-Allow-Origin': '*' } }

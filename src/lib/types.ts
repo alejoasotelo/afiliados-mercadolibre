@@ -1,11 +1,15 @@
-// ─── Producto leído desde Google Sheets (solo lo que carga el usuario) ────────
+// ─── Producto leído desde Google Sheets (carga manual) ───────────────────────
+// Columnas: A:url_ml | B:slug | C:titulo | D:descripcion |
+//           E:imagen_1 | F:imagen_2 | G:imagen_3 | H:marca | I:activo | J:relacionados
 export interface ProductoSheet {
-  urlMl: string;           // col A — URL original pegada por el usuario
-  mlItemId: string;        // col B — extraído automáticamente por Apps Script
-  slug: string;            // col C — generado automáticamente por Apps Script
-  descripcionSeo: string;  // col D — texto SEO que escribe el usuario
-  // col E — activo (filtrado en sheets.ts, no se expone aquí)
-  categoriaSlug?: string;  // col F — slug de categoría (auto-completado por Apps Script)
+  urlMl:       string;    // col A — URL del producto en MercadoLibre
+  slug:        string;    // col B — slug para la URL del sitio
+  titulo:      string;    // col C — título del producto
+  descripcion: string;    // col D — descripción / texto SEO
+  imagenes:    string[];  // cols E, F, G — hasta 3 URLs de imágenes
+  marca:       string;    // col H — marca del producto
+  // col I — activo (filtrado en sheets.ts, no se expone aquí)
+  relacionados: string[]; // col J — slugs de productos relacionados (separados por coma)
 }
 
 // ─── Categoría obtenida desde ML API ─────────────────────────────────────────
@@ -69,28 +73,28 @@ export interface MLReviewsResponse {
   rating_levels: MLRatingLevel[];
 }
 
-// ─── Producto completo (Sheet + ML API) ──────────────────────────────────────
+// ─── Producto completo (datos del Sheet enriquecidos) ────────────────────────
 export interface ProductoCompleto {
-  // Del Sheet
-  mlItemId: string;
-  slug: string;
-  descripcionSeo: string;
-  urlMl: string;
-  // De ML API
-  nombre: string;
-  precio?: number;
-  moneda?: string;
-  imagenes: string[];
-  stock: boolean;
-  condicion: string;
-  marca?: string;
+  slug:        string;
+  titulo:      string;
+  descripcion: string;
+  urlMl:       string;
   urlAfiliado: string;
+  imagenes:    string[];
+  marca:       string;
+  relacionados: string[]; // slugs de productos relacionados
+  // Campos adicionales para la página
+  nombre:    string;      // alias de titulo
+  precio?:   number;
+  moneda:    string;
+  stock:     boolean;
+  condicion: string;
   permalink: string;
   categoria: MLCategoria;
-  reviews?: {
+  reviews?:  {
     promedio: number;
-    total: number;
-    items: MLReview[];
-    niveles: MLRatingLevel[];
+    total:    number;
+    items:    MLReview[];
+    niveles:  MLRatingLevel[];
   };
 }

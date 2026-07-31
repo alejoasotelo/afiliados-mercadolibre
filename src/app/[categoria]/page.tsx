@@ -61,7 +61,7 @@ export default async function CategoriaPage({ params }: { params: { categoria: s
   const itemList = buildItemListSchema(
     categoria.nombre,
     productos.map((p) => ({
-      nombre: p.nombre,
+      nombre: p.titulo || p.nombre,
       url: `${SITE_URL}/${p.categoria.slug}/${p.slug}`,
       imagen: p.imagenes[0],
     }))

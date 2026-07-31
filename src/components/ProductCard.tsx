@@ -20,7 +20,7 @@ export function ProductCard({ producto }: ProductCardProps) {
         <div className="relative aspect-square bg-gray-50 overflow-hidden">
           <Image
             src={imagen}
-            alt={producto.nombre}
+            alt={producto.titulo || producto.nombre}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
@@ -38,7 +38,7 @@ export function ProductCard({ producto }: ProductCardProps) {
         </div>
         <div className="p-4">
           <h3 className="text-sm font-medium text-gray-800 line-clamp-2 mb-2 group-hover:text-ml-blue transition-colors">
-            {producto.nombre}
+            {producto.titulo || producto.nombre}
           </h3>
           {producto.reviews && producto.reviews.total > 0 && (
             <div className="mb-2">

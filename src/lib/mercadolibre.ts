@@ -157,27 +157,19 @@ export function buildAffiliateLink(urlMl: string): string {
 // ─── Enriquecer producto (Sheet + Scraper) ────────────────────────────────────
 
 export async function enriquecerProducto(producto: ProductoSheet): Promise<ProductoCompleto> {
-  const scraped = await scrapeMLPage(producto.urlMl);
-
-  // La categoría del Sheet tiene prioridad (la puso el usuario o Apps Script).
-  // Si no existe, usamos la scrapeada del breadcrumb de ML.
-  const categoriaFinal: MLCategoria = producto.categoriaSlug
-    ? { id: '', nombre: producto.categoriaSlug.replace(/-/g, ' '), slug: producto.categoriaSlug }
-    : scraped?.categoria ?? { id: '', nombre: 'Productos', slug: 'productos' };
-
   return {
     ...producto,
-    nombre:      scraped?.nombre     || producto.slug,
-    precio:      scraped?.precio,
-    moneda:      scraped?.moneda     ?? 'ARS',
-    imagenes:    scraped?.imagenes   ?? [],
-    stock:       scraped?.stock      ?? false,
-    condicion:   scraped?.condicion  ?? 'Nuevo',
-    marca:       scraped?.marca,
+    nombre:      producto.titulo || producto.slug,
+    precio:      undefined,
+    moneda:      'ARS',
+    imagenes:    producto.imagenes,
+    stock:       true,
+    condicion:   'Nuevo',
+    marca:       producto.marca || undefined,
     permalink:   producto.urlMl,
     urlAfiliado: buildAffiliateLink(producto.urlMl),
-    categoria:   categoriaFinal,
-    reviews:     scraped?.reviews,
+    categoria:   { id: '', nombre: 'Productos', slug: 'productos' },
+    reviews:     undefined,
   };
 }
 

@@ -1,19 +1,20 @@
 import Link from 'next/link';
-import { ProductoCompleto } from '@/lib/types';
+import { CategoriaSheet, ProductoCompleto } from '@/lib/types';
 import { ProductCard } from './ProductCard';
 
 interface CategoryPageProps {
   prefix: string;
   productos: ProductoCompleto[];
+  categoria?: CategoriaSheet | null;
 }
 
 function formatSegmento(segmento: string): string {
   return segmento.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export function CategoryPage({ prefix, productos }: CategoryPageProps) {
+export function CategoryPage({ prefix, productos, categoria }: CategoryPageProps) {
   const segmentos = prefix.split('/');
-  const titulo = formatSegmento(segmentos[segmentos.length - 1]);
+  const titulo = categoria?.titulo || formatSegmento(segmentos[segmentos.length - 1]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
@@ -36,7 +37,11 @@ export function CategoryPage({ prefix, productos }: CategoryPageProps) {
         })}
       </nav>
 
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">{titulo}</h1>
+      <h1 className={`text-2xl font-bold text-gray-900 ${categoria?.descripcion ? 'mb-2' : 'mb-6'}`}>{titulo}</h1>
+
+      {categoria?.descripcion && (
+        <p className="text-gray-500 mb-6 max-w-3xl">{categoria.descripcion}</p>
+      )}
 
       {productos.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">

@@ -6,9 +6,20 @@
  *   E: imagen_1 | F: imagen_2 | G: imagen_3 | H: marca | I: activo | J: relacionados | K: precio
  *
  * "relacionados" = slugs separados por coma (ej: "producto-a,producto-b")
+ *
+ * Estructura del tab "categorias" (carga manual, opcional):
+ *   A: slug | B: titulo | C: descripcion | D: titulo_seo | E: descripcion_seo
+ *
+ * "slug" puede escribirse con o sin barra inicial/final (ej: "/zapatillas/chunky").
+ * Si una categoría (prefijo de URL) no tiene fila acá, se arma con los datos
+ * derivados de los productos como hasta ahora.
  */
 
-import { ProductoSheet } from './types';
+import { CategoriaSheet, ProductoSheet } from './types';
+
+function normalizarSlug(slug: string): string {
+  return slug.trim().replace(/^\/+|\/+$/g, '');
+}
 
 const SHEETS_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
 
@@ -56,4 +67,35 @@ export async function getProductos(): Promise<ProductoSheet[]> {
 export async function getProducto(slug: string): Promise<ProductoSheet | null> {
   const all = await getProductos();
   return all.find((p) => p.slug === slug) ?? null;
+}
+
+// ─── Leer todas las categorías con datos manuales desde el Sheet ─────────────
+
+export async function getCategorias(): Promise<CategoriaSheet[]> {
+  // La hoja "categorias" es opcional: si todavía no fue creada en el spreadsheet,
+  // no debe romper las páginas de categoría (que siguen funcionando con el
+  // comportamiento derivado de productos).
+  let rows: string[][];
+  try {
+    rows = await fetchSheet('categorias!A:E');
+  } catch {
+    return [];
+  }
+  if (rows.length < 2) return [];
+  const [, ...data] = rows;
+  return data
+    .filter((row) => normalizarSlug(row[0] ?? ''))
+    .map((row) => ({
+      slug:           normalizarSlug(row[0] ?? ''),
+      titulo:         (row[1] ?? '').trim(),
+      descripcion:    (row[2] ?? '').trim(),
+      tituloSeo:      (row[3] ?? '').trim(),
+      descripcionSeo: (row[4] ?? '').trim(),
+    }));
+}
+
+export async function getCategoria(slug: string): Promise<CategoriaSheet | null> {
+  const all = await getCategorias();
+  const objetivo = normalizarSlug(slug);
+  return all.find((c) => c.slug === objetivo) ?? null;
 }

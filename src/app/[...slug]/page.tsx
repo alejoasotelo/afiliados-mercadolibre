@@ -37,9 +37,13 @@ export async function generateMetadata({ params }: { params: { slug: string[] } 
   }
 
   const url = `${SITE_URL}/${data.prefix}`;
+  const titulo = data.categoria?.tituloSeo || `${data.prefix} | ${SITE_NAME}`;
+  const descripcion = data.categoria?.descripcionSeo;
   return {
-    title: `${data.prefix} | ${SITE_NAME}`,
+    title: titulo,
+    ...(descripcion && { description: descripcion }),
     alternates: { canonical: url },
+    openGraph: { title: titulo, ...(descripcion && { description: descripcion }), url },
   };
 }
 
@@ -53,5 +57,5 @@ export default async function Page({ params }: { params: { slug: string[] } }) {
     return <ArticlePage prod={prod} relacionados={relacionados} urlAfiliado={urlAfiliado} />;
   }
 
-  return <CategoryPage prefix={data.prefix} productos={data.productos} />;
+  return <CategoryPage prefix={data.prefix} productos={data.productos} categoria={data.categoria} />;
 }

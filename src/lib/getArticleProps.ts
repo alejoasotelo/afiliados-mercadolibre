@@ -8,9 +8,9 @@
  * con "<segmento>/", a un listado tipo categoría/subcategoría.
  */
 
-import { getProducto, getProductos } from './sheets';
+import { getCategoria, getProducto, getProductos } from './sheets';
 import { enriquecerProducto, buildAffiliateLink } from './mercadolibre';
-import { ProductoCompleto } from './types';
+import { CategoriaSheet, ProductoCompleto } from './types';
 
 export async function getArticleProps(slug: string) {
   const sheet = await getProducto(slug);
@@ -36,6 +36,7 @@ export async function getAllSlugs(): Promise<string[]> {
 export interface CategoryProps {
   prefix: string;
   productos: ProductoCompleto[];
+  categoria: CategoriaSheet | null;
 }
 
 export async function getCategoryProps(prefix: string): Promise<CategoryProps | null> {
@@ -44,8 +45,11 @@ export async function getCategoryProps(prefix: string): Promise<CategoryProps | 
   const matches = productosSheet.filter((p) => p.slug.startsWith(prefijoConBarra));
   if (matches.length === 0) return null;
 
-  const productos = await Promise.all(matches.map(enriquecerProducto));
-  return { prefix, productos };
+  const [productos, categoria] = await Promise.all([
+    Promise.all(matches.map(enriquecerProducto)),
+    getCategoria(prefix),
+  ]);
+  return { prefix, productos, categoria };
 }
 
 // Prefijos únicos de "depth" segmentos, derivados de slugs más profundos

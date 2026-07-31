@@ -20,6 +20,16 @@ export interface MLCategoria {
   slug: string; // generado desde nombre
 }
 
+// ─── Categoría leída desde Google Sheets (tab "categorias", carga manual) ────
+// Columnas: A:slug | B:titulo | C:descripcion | D:titulo_seo | E:descripcion_seo
+export interface CategoriaSheet {
+  slug:           string; // col A — ej: "zapatillas" o "zapatillas/chunky" (sin barra inicial)
+  titulo:         string; // col B — título mostrado en la página de categoría
+  descripcion:    string; // col C — descripción mostrada en la página de categoría
+  tituloSeo:      string; // col D — <title> / og:title
+  descripcionSeo: string; // col E — meta description / og:description
+}
+
 // ─── Datos del item desde ML API ─────────────────────────────────────────────
 export interface MLItem {
   id: string;

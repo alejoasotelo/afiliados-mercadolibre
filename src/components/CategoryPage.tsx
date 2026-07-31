@@ -40,7 +40,7 @@ export function CategoryPage({ prefix, productos, categoria }: CategoryPageProps
       <h1 className={`text-2xl font-bold text-gray-900 ${categoria?.descripcion ? 'mb-2' : 'mb-6'}`}>{titulo}</h1>
 
       {categoria?.descripcion && (
-        <p className="text-gray-500 mb-6 max-w-3xl">{categoria.descripcion}</p>
+        <p className="text-gray-500 mb-6">{categoria.descripcion}</p>
       )}
 
       {productos.length > 0 ? (

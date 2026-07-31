@@ -8,6 +8,10 @@ import { ProductoCompleto, ProductoSheet } from '@/lib/types';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://tienda.alejosotelo.com.ar';
 
+function formatSegmento(segmento: string): string {
+  return segmento.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 interface ArticlePageProps {
   prod: ProductoCompleto;
   relacionados: ProductoSheet[];
@@ -35,8 +39,14 @@ export function ArticlePage({ prod, relacionados, urlAfiliado }: ArticlePageProp
     url,
   });
 
+  const segmentosCategoria = prod.slug.split('/').slice(0, -1);
+
   const breadcrumb = buildBreadcrumbSchema([
     { name: 'Inicio', url: SITE_URL },
+    ...segmentosCategoria.map((seg, i) => ({
+      name: formatSegmento(seg),
+      url: `${SITE_URL}/${segmentosCategoria.slice(0, i + 1).join('/')}`,
+    })),
     { name: prod.titulo, url },
   ]);
 
@@ -50,6 +60,14 @@ export function ArticlePage({ prod, relacionados, urlAfiliado }: ArticlePageProp
         {/* Breadcrumb */}
         <nav className="text-sm text-gray-400 mb-6">
           <Link href="/" className="hover:text-ml-blue">Inicio</Link>
+          {segmentosCategoria.map((seg, i) => (
+            <span key={seg}>
+              <span className="mx-2">/</span>
+              <Link href={`/${segmentosCategoria.slice(0, i + 1).join('/')}`} className="hover:text-ml-blue">
+                {formatSegmento(seg)}
+              </Link>
+            </span>
+          ))}
           <span className="mx-2">/</span>
           <span className="text-gray-700">{prod.titulo}</span>
         </nav>
